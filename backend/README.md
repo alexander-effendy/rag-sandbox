@@ -227,14 +227,21 @@ Then:
 .venv/bin/python backend/scripts/ask.py "What did the Vandermeer Study find about protein?"
 ```
 
-| Command | What it shows |
-|---|---|
-| `ask.py --show-chunks "..."` | Retrieved chunks and their scores |
-| `ask.py --no-rag "..."` | Same question, no retrieval — the control |
-| `ask.py` | Interactive REPL |
-| `evaluate.py` | Retrieval and answer scores, separately |
-| `evaluate.py --compare` | Every question with *and* without RAG |
-| `ingest.py --chunk-words 200 --overlap 50` | Rebuild with different chunking |
+| # | Task | Command | Files involved | What it does |
+|---|---|---|---|---|
+| 1 | Build the index (run first, and after any doc edit) | `ingest.py` | [chunking.py](rag/chunking.py) → [ollama_client.py](rag/ollama_client.py) → [store.py](rag/store.py) | Chunks `docs/`, embeds each chunk with `all-minilm`, saves the matrix to `index/` |
+| 2 | Ask a question | `ask.py "..."` | [ask.py](scripts/ask.py) → [pipeline.py](rag/pipeline.py) | Embeds the question, retrieves top-k chunks, prompts `llama3.2`, prints the answer |
+| 3 | See what was retrieved | `ask.py --show-chunks "..."` | same as #2 | Same as #2, plus each chunk's text and similarity score — use whenever an answer looks wrong |
+| 4 | Ask with no retrieval (the control) | `ask.py --no-rag "..."` | [pipeline.py](rag/pipeline.py) `answer_without_rag()` | Skips the index, sends the bare question straight to `llama3.2` — shows what retrieval bought you |
+| 5 | Interactive REPL | `ask.py` (no question) | same as #2 | Loads the index once, then loops until Ctrl-C or a blank line |
+| 6 | Change how many chunks get retrieved | `ask.py -k 8 "..."` / `evaluate.py -k 8` | [pipeline.py](rag/pipeline.py) `retrieve()` | Retrieves the top `k` chunks instead of the default 4 |
+| 7 | Rebuild with different chunking | `ingest.py --chunk-words 200 --overlap 50` | [chunking.py](rag/chunking.py) | Same as #1, with a different chunk size / overlap — see section 10 |
+| 8 | Build a second index without overwriting the first | `ingest.py --index /tmp/experiment` | [store.py](rag/store.py) `save()` | Writes elsewhere so two configs can be compared; query it with `ask.py --index /tmp/experiment "..."` |
+| 9 | Score the whole system | `evaluate.py` | [evaluate.py](scripts/evaluate.py) → [pipeline.py](rag/pipeline.py) | Runs all 20 `eval/questions.json` questions, scores retrieval and answer quality *separately* |
+| 10 | Score with RAG vs. no-RAG side by side | `evaluate.py --compare` | same as #9, plus `answer_without_rag()` | Same 20 questions, also answered with no retrieval — source of the 5/20 figure in section 9 |
+| 11 | Compare RAG vs. stuffing vs. nothing | `compare_stuffing.py` | [compare_stuffing.py](scripts/compare_stuffing.py) | Runs all 20 questions three ways, reports accuracy, prompt size, latency — see section 4 |
+
+Typical order: #1 once → #2/#3 while poking at it → #9 whenever something changes → #6/#7/#8 to experiment → #11 to see the alternative you're not using.
 
 ---
 
