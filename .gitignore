@@ -1,0 +1,25 @@
+# Shared virtualenv at the repo root -- recreate with:
+#   python3.12 -m venv .venv && .venv/bin/pip install -r backend/requirements.txt
+.venv/
+
+# Python bytecode caches, regenerated automatically on every run.
+__pycache__/
+*.pyc
+
+# The vector index. Generated output, not source -- rebuild in about a second
+# with `python backend/scripts/ingest.py`. Committing it would mean committing
+# a binary blob that changes completely whenever a document does.
+# (No leading slash, so this matches at any depth.)
+index/
+
+# Where ChromaDB persists, for when you do the port. Same reasoning.
+chroma_db/
+
+# Frontend build output and dependencies, for when that folder is real.
+node_modules/
+dist/
+build/
+.next/
+
+# macOS Finder metadata.
+.DS_Store

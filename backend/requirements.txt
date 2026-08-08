@@ -1,0 +1,5 @@
+# Deliberately minimal. A working RAG system needs an HTTP client and an array
+# library; everything else is a convenience you should add only once you feel
+# the absence of it.
+numpy>=2.0
+requests>=2.31
