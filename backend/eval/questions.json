@@ -2,104 +2,192 @@
   {
     "question": "What daily protein intake did the Vandermeer Study find maximised lean mass retention?",
     "expect_source": "nutrition/protein.md",
-    "expect_any": ["1.6"],
+    "expect_any": [
+      "1.6"
+    ],
     "note": "Fictional study, so a correct answer proves retrieval."
   },
   {
     "question": "How much leucine does a meal need to trigger a maximal muscle protein synthesis response?",
     "expect_source": "nutrition/protein.md",
-    "expect_any": ["2.5"]
+    "expect_any": [
+      "2.5"
+    ]
   },
   {
     "question": "What DIAAS score does whole egg have?",
     "expect_source": "nutrition/protein.md",
-    "expect_any": ["1.13"]
+    "expect_any": [
+      "1.13"
+    ]
   },
   {
     "question": "What daily fiber intake did the Kestrel Cohort associate with the lowest all-cause mortality?",
     "expect_source": "nutrition/fiber-and-gut-health.md",
-    "expect_any": ["38"]
+    "expect_any": [
+      "38"
+    ]
   },
   {
     "question": "Why does cooling cooked potatoes increase their resistant starch?",
     "expect_source": "nutrition/fiber-and-gut-health.md",
-    "expect_any": ["retrograd", "recrystall"]
+    "expect_any": [
+      "retrograd",
+      "recrystall"
+    ]
   },
   {
     "question": "What is the Aldridge formula for daily fluid intake?",
     "expect_source": "nutrition/hydration.md",
-    "expect_any": ["35"]
+    "expect_any": [
+      "35"
+    ]
   },
   {
     "question": "What is the average sweat sodium concentration?",
     "expect_source": "nutrition/hydration.md",
-    "expect_any": ["900"]
+    "expect_any": [
+      "900"
+    ]
   },
   {
     "question": "What percentage of participants in the Brightwater Survey were vitamin D deficient?",
     "expect_source": "nutrition/micronutrients.md",
-    "expect_any": ["41"]
+    "expect_any": [
+      "41"
+    ]
   },
   {
     "question": "By how much does taking vitamin D with a fatty meal improve absorption?",
     "expect_source": "nutrition/micronutrients.md",
-    "expect_any": ["32"]
+    "expect_any": [
+      "32"
+    ]
   },
   {
     "question": "What eating window did the Okonkwo Trial test, and what happened to fasting insulin?",
     "expect_source": "nutrition/meal-timing.md",
-    "expect_any": ["10-hour", "10 hour", "14"]
+    "expect_any": [
+      "10-hour",
+      "10 hour",
+      "14"
+    ]
   },
   {
     "question": "How many dimensions does the all-MiniLM-L6-v2 model produce?",
     "expect_source": "ai/embeddings.md",
-    "expect_any": ["384"]
+    "expect_any": [
+      "384"
+    ],
+    "expect_path": "retrieval",
+    "note": "Boundary case for metadata routing: opens like a count question but asks about content. Must NOT take the metadata path."
   },
   {
     "question": "Why can cosine similarity be replaced by a dot product?",
     "expect_source": "ai/embeddings.md",
-    "expect_any": ["normal", "unit length"]
+    "expect_any": [
+      "normal",
+      "unit length"
+    ]
   },
   {
     "question": "What did the Marlowe benchmark find about long context windows?",
     "expect_source": "ai/transformers.md",
-    "expect_any": ["middle", "40", "70"]
+    "expect_any": [
+      "middle",
+      "40",
+      "70"
+    ]
   },
   {
     "question": "Why is the dot product in attention scaled by the square root of the key dimension?",
     "expect_source": "ai/transformers.md",
-    "expect_any": ["gradient", "softmax", "vanish"]
+    "expect_any": [
+      "gradient",
+      "softmax",
+      "vanish"
+    ]
   },
   {
     "question": "What recall does HNSW typically achieve?",
     "expect_source": "ai/vector-databases.md",
-    "expect_any": ["95", "99"]
+    "expect_any": [
+      "95",
+      "99"
+    ]
   },
   {
     "question": "When should I use pgvector instead of ChromaDB?",
     "expect_source": "ai/vector-databases.md",
-    "expect_any": ["relational", "postgres", "sql", "join"]
+    "expect_any": [
+      "relational",
+      "postgres",
+      "sql",
+      "join"
+    ]
   },
   {
     "question": "What fraction of parameters does LoRA typically train?",
     "expect_source": "ai/fine-tuning-vs-rag.md",
-    "expect_any": ["1 percent", "1%"]
+    "expect_any": [
+      "1 percent",
+      "1%"
+    ]
   },
   {
     "question": "Why is access control an argument for RAG over fine-tuning?",
     "expect_source": "ai/fine-tuning-vs-rag.md",
-    "expect_any": ["revok", "retrieval time", "permission", "weights"]
+    "expect_any": [
+      "revok",
+      "retrieval time",
+      "permission",
+      "weights"
+    ]
   },
   {
     "question": "What did the Fitzgerald Trial conclude about creatine and sleep quality?",
     "expect_source": null,
-    "expect_any": ["don't know", "do not know"],
+    "expect_any": [
+      "don't know",
+      "do not know"
+    ],
     "note": "Nothing in the corpus covers this. The system should refuse, not invent."
   },
   {
     "question": "What is the capital of Australia?",
     "expect_source": null,
-    "expect_any": ["don't know", "do not know"],
+    "expect_any": [
+      "don't know",
+      "do not know"
+    ],
     "note": "The model knows this from pretraining. It should still refuse, because the corpus does not contain it."
+  },
+  {
+    "question": "How many documents do you have?",
+    "expect_source": null,
+    "expect_path": "metadata",
+    "expect_exact": "The corpus contains 10 documents across 2 subject areas: ai (5), nutrition (5).",
+    "note": "Corpus-metadata case (count). Exact match: this answer is computed, not generated, so it is reproducible byte for byte."
+  },
+  {
+    "question": "What documents do you have?",
+    "expect_source": null,
+    "expect_path": "metadata",
+    "expect_exact": "The corpus contains 10 documents across 2 subject areas:\n\nai (5):\n  - embeddings.md\n  - fine-tuning-vs-rag.md\n  - retrieval-augmented-generation.md\n  - transformers.md\n  - vector-databases.md\n\nnutrition (5):\n  - fiber-and-gut-health.md\n  - hydration.md\n  - meal-timing.md\n  - micronutrients.md\n  - protein.md",
+    "note": "Corpus-metadata case (listing). Exact match: this answer is computed, not generated, so it is reproducible byte for byte."
+  },
+  {
+    "question": "Do you have any AI-related documents?",
+    "expect_source": null,
+    "expect_path": "metadata",
+    "expect_exact": "Yes \u2014 the corpus has documents about AI:\n\nai (5):\n  - embeddings.md\n  - fine-tuning-vs-rag.md\n  - retrieval-augmented-generation.md\n  - transformers.md\n  - vector-databases.md",
+    "note": "Corpus-metadata case (covered subject). Exact match: this answer is computed, not generated, so it is reproducible byte for byte."
+  },
+  {
+    "question": "Do you have documents about cryptocurrency?",
+    "expect_source": null,
+    "expect_path": "metadata",
+    "expect_exact": "No \u2014 the corpus has no documents about cryptocurrency. It covers ai, nutrition.",
+    "note": "Corpus-metadata case (uncovered subject). Exact match: this answer is computed, not generated, so it is reproducible byte for byte."
   }
 ]

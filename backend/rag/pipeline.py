@@ -36,9 +36,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from . import ollama_client
+from . import corpus_metadata, ollama_client
 from .chunking import Chunk
 from .store import SearchResult, VectorStore
+
+# The two ways a question can be answered. See Answer.path.
+RETRIEVAL_PATH = "retrieval"  # embed -> search -> prompt -> generate
+METADATA_PATH = "metadata"  # computed from the index, no model involved
 
 # ---------------------------------------------------------------------------
 # THE PROMPT. Small, and responsible for a lot.
@@ -101,6 +105,21 @@ class Answer:
     question: str
     text: str
     retrieved: list[SearchResult]  # [(chunk, score), ...], best first
+
+    # Which path produced this answer: RETRIEVAL_PATH or METADATA_PATH.
+    #
+    # Needed because a metadata answer has an empty `retrieved` list, and so
+    # does a content question where retrieval found nothing. Those two look
+    # identical from the outside and mean opposite things -- one is a complete,
+    # exact answer, the other is a refusal. evaluate.py must not score the
+    # first as a refusal, and a frontend rendering retrieved chunks needs to
+    # know there are legitimately none.
+    #
+    # Stored explicitly rather than inferred from `retrieved` being empty,
+    # because that inference would silently misclassify the day a content
+    # question legitimately retrieves nothing. Defaulted so every existing
+    # construction site keeps working unchanged.
+    path: str = RETRIEVAL_PATH
 
     @property
     def sources(self) -> list[str]:
@@ -204,6 +223,23 @@ def answer(
     own distribution first rather than borrowing a number -- and treat it as a
     coarse safety net, not a confidence score.
     """
+    # ---- STEP 0: is this a question ABOUT the corpus rather than about what
+    # is in it? "How many documents do you have?" has no answer in any passage,
+    # so retrieval cannot help -- but the index knows exactly, so we answer
+    # from it directly. See rag/corpus_metadata.py.
+    #
+    # This runs BEFORE the embedding call, so a metadata question costs nothing
+    # and touches no model. Anything not recognised returns None and falls
+    # straight through to the pipeline below, unchanged.
+    metadata_answer = corpus_metadata.answer_question(question, store.sources())
+    if metadata_answer is not None:
+        return Answer(
+            question=question,
+            text=metadata_answer,
+            retrieved=[],  # nothing was retrieved, by design
+            path=METADATA_PATH,
+        )
+
     # Retrieve, then drop anything below the floor.
     results = [r for r in retrieve(question, store, k=k) if r[1] >= min_score]
 

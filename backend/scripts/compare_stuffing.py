@@ -74,6 +74,18 @@ def main() -> int:
 
     store = NumpyVectorStore.load(args.index)
     questions = json.loads(args.questions.read_text())
+
+    # Content questions only. Corpus-metadata cases ("how many documents do you
+    # have?") are excluded because this script measures how well an answer can
+    # be found in supplied text, and their answer is in no document at all --
+    # stuffing the corpus could not produce it, so scoring them here would
+    # penalise the stuffed column for the wrong reason. They also carry
+    # `expect_exact` rather than `expect_any`, so including them would fail.
+    skipped = [c for c in questions if c.get("expect_path") == pipeline.METADATA_PATH]
+    questions = [c for c in questions if c.get("expect_path") != pipeline.METADATA_PATH]
+    if skipped:
+        print(f"Skipping {len(skipped)} corpus-metadata case(s) — not answerable from text.")
+
     if args.limit:
         questions = questions[: args.limit]
 
