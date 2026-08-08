@@ -1,3 +1,4 @@
+#!/Users/z5289605/dev/rag-sandbox/.venv/bin/python
 """
 THE EXPERIMENT: what if we skip RAG and just put every document in the prompt?
 
