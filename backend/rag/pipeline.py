@@ -47,35 +47,79 @@ METADATA_PATH = "metadata"  # computed from the index, no model involved
 # ---------------------------------------------------------------------------
 # THE PROMPT. Small, and responsible for a lot.
 #
-# Everything here is defending against ONE failure mode: the model answering
-# from its training data instead of from the chunks we gave it. That failure is
-# especially nasty because a wrong answer looks exactly like a right one --
-# same fluency, same confidence, no error anywhere.
+# It defends against ONE failure mode: the model answering from its training
+# data instead of from the chunks we gave it. That failure is especially nasty
+# because a wrong answer looks exactly like a right one -- same fluency, same
+# confidence, no error anywhere.
+#
+# THE AXIS THAT MATTERS: WHERE FACTS COME FROM, NOT WHETHER REASONING HAPPENS
+# ---------------------------------------------------------------------------
+# An earlier version of this prompt said only "answer using ONLY the context"
+# and "if the context does not contain the answer, say I don't know". It never
+# said whether the model was allowed to *reason* over the context, and the model
+# resolved that silence differently depending on how a question was phrased:
+#
+#   "eat protein for what"      -> "To maximize lean mass retention."
+#   "why should I eat protein"  -> "I don't know."
+#
+# Same document, same four retrieved chunks, both reproducible. Neither answer
+# was wrong under the prompt as written -- the prompt was underspecified, and an
+# underspecified rule is worse than either a strict or a permissive one, because
+# nobody can predict which they will get.
+#
+# The word doing the damage was "contain": it reads as "present as text", which
+# pulls toward quotation. So the rules below split the requirement along the
+# axis that actually matters:
+#
+#     FACTS      must come from the context.        <- the grounding guarantee
+#     REASONING  may come from the model.           <- was never the risk
+#
+# Permitting inference does not weaken grounding. Reasoning over retrieved
+# passages introduces no new facts, so every claim stays checkable against the
+# cited chunks. What changed is only whether the model may join two of them.
 #
 # Line by line:
 #
-#   "ONLY the context below"  -- capitalised because it demonstrably helps;
-#                                models weight emphasis in instructions.
+#   "Every fact ... MUST come from the context"  -- the grounding guarantee,
+#                                stated first because it is the one rule that
+#                                must never bend.
+#
+#   "even if you are confident"  -- this clause is doing real work. Test it: ask
+#                                "What is the capital of Australia?" The model
+#                                knows the answer perfectly well and should
+#                                still refuse, because it is not in the corpus.
+#                                If this ever stops working, the prompt has
+#                                traded away the property the project is for.
+#
+#   "You MAY reason from the context"  -- the clause that was missing. Without
+#                                it the model quotes when it should conclude,
+#                                and does so unpredictably.
+#
+#   "lacks the facts an answer would need"  -- refusal restated as a test of
+#                                SUPPORT rather than of PRESENCE. Context that
+#                                supports a conclusion without stating it is
+#                                sufficient; context merely on the same topic is
+#                                not.
 #
 #   "reply exactly: I don't know"  -- gives the model a legitimate exit. Without
 #                                an explicit way to decline, a model asked a
 #                                question will nearly always produce *something*,
 #                                and that something is invention.
 #
-#   "even if you are confident"  -- this line is doing real work. Test it: ask
-#                                "What is the capital of Australia?" The model
-#                                knows the answer perfectly well, and correctly
-#                                refuses, because it is not in the corpus.
-#
-#   "Cite the sources"        -- makes the answer auditable. You can check
-#                                whether the citation actually supports it.
+#   "Cite the sources"        -- makes the answer auditable. Matters more now
+#                                than it did: a synthesised answer is prose
+#                                rather than a quotable fact, so the citation is
+#                                what lets a reader check it.
 # ---------------------------------------------------------------------------
 PROMPT_TEMPLATE = """\
 Answer the question using ONLY the context below.
 
 Rules:
-- If the context does not contain the answer, reply exactly: I don't know.
-- Do not use outside knowledge, even if you are confident it is correct.
+- Every fact in your answer MUST come from the context. Never introduce facts
+  from your own knowledge, even if you are confident they are correct.
+- You MAY reason from the context. If it supports an answer without stating it
+  in those words, give that answer.
+- If the context lacks the facts an answer would need, reply exactly: I don't know.
 - Cite the sources you used as [source] at the end of your answer.
 
 Context:
