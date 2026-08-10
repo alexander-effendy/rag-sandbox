@@ -63,6 +63,23 @@ class VectorStore(Protocol):
     def search(self, query_embedding: np.ndarray, k: int) -> list[SearchResult]: ...
     def __len__(self) -> int: ...
 
+    def sources(self) -> list[str]:
+        """Every distinct source document held, sorted.
+
+        ENUMERATION, as distinct from search -- the third thing a store must do.
+
+        Added for corpus-metadata questions ("how many documents do you have?"),
+        which similarity cannot answer because no passage states the answer, but
+        which the store knows exactly.
+
+        Deliberately narrower than exposing the chunks themselves: a backend can
+        satisfy this with a metadata query rather than materialising every chunk,
+        and callers cannot reach past the interface into one store's internals.
+        Any store that holds chunks can say which documents they came from, so
+        this stays cheap to implement.
+        """
+        ...
+
 
 def normalize(vectors: np.ndarray) -> np.ndarray:
     """Scale each vector to length 1, so that a dot product IS cosine similarity.
@@ -197,6 +214,14 @@ class NumpyVectorStore:
     def __len__(self) -> int:
         """Lets you call len(store). Used for progress output in ingest.py."""
         return len(self.chunks)
+
+    def sources(self) -> list[str]:
+        """Distinct source documents, sorted. See VectorStore.sources().
+
+        Note this is a document count, not a chunk count: one document that
+        produced nine chunks appears once here and nine times in self.chunks.
+        """
+        return sorted({chunk.source for chunk in self.chunks})
 
     def save(self, directory: Path) -> None:
         """Persist the index to disk, so ask.py does not re-embed every run.

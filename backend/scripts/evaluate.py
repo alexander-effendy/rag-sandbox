@@ -106,7 +106,7 @@ def main() -> int:
 
     questions = json.loads(args.questions.read_text())
 
-    retrieval_hits = answer_hits = no_rag_hits = 0
+    retrieval_hits = answer_hits = no_rag_hits = no_rag_scored = 0
     # Counted separately from len(questions): the refusal tests have no correct
     # source to retrieve, so including them would make the retrieval score
     # unreachable. Retrieval is scored over 18, answers over 20.
@@ -143,17 +143,46 @@ def main() -> int:
             # single most important behaviour in this whole test set.
             retrieval_mark = "  --"
 
+        # ---- Score 1b: did the question take the path the case expects?
+        #
+        # Three case kinds now share "no expected source", and they mean
+        # different things:
+        #   content case  -- names its source, scored on retrieval
+        #   refusal case  -- no source, correct behaviour is to decline
+        #   metadata case -- no source because it never retrieves at all
+        #
+        # Without an explicit expected path, a metadata case is indistinguishable
+        # from a refusal case, and a routing regression would score as a pass.
+        # The field defaults to the retrieval path, so every pre-existing case
+        # stays valid unedited.
+        expected_path = case.get("expect_path", pipeline.RETRIEVAL_PATH)
+        path_ok = result.path == expected_path
+        path_mark = "" if path_ok else f"  path {FAIL} ({result.path}, wanted {expected_path})"
+
         # ---- Score 2: the answer itself.
-        correct = contains_any(result.text, case["expect_any"])
+        #
+        # Metadata answers are computed, not generated, so they are exactly
+        # reproducible -- which means we can demand exact equality instead of a
+        # substring. That matters: a listing is long, so a substring check
+        # against it passes almost trivially and would not catch a document
+        # silently dropped from the middle of the list.
+        if expected_path == pipeline.METADATA_PATH and "expect_exact" in case:
+            correct = result.text == case["expect_exact"]
+        else:
+            correct = contains_any(result.text, case["expect_any"])
+        correct = correct and path_ok
         answer_hits += correct
 
         print(f"{i:2}. {question}")
-        print(f"    retrieval {retrieval_mark}   answer {PASS if correct else FAIL}")
+        print(f"    retrieval {retrieval_mark}   answer {PASS if correct else FAIL}{path_mark}")
 
         # Only print diagnostics for failures -- a wall of detail on passing
         # cases buries the two lines you actually need to read.
         if not correct or (expected_source and not retrieved):
-            print(f"    expected: one of {case['expect_any']}")
+            if "expect_exact" in case:
+                print(f"    expected exactly: {' '.join(case['expect_exact'].split())[:200]}")
+            else:
+                print(f"    expected: one of {case['expect_any']}")
             if expected_source:
                 print(f"    expected source: {expected_source}")
             print(f"    got: {' '.join(result.text.split())[:200]}")
@@ -165,10 +194,16 @@ def main() -> int:
                 print(f"    retrieved: {ranked}")
 
         # ---- Optional score 3: the same question with no retrieval at all.
-        if args.compare:
+        #
+        # Skipped for metadata cases. The comparison exists to show what
+        # retrieval bought you, and a metadata case never retrieves -- asking
+        # the bare model how many documents we hold measures nothing, and
+        # counting it would drag the baseline down for the wrong reason.
+        if args.compare and expected_path != pipeline.METADATA_PATH:
             plain = pipeline.answer_without_rag(question)
-            hit = contains_any(plain, case["expect_any"])
+            hit = contains_any(plain, case.get("expect_any", []))
             no_rag_hits += hit
+            no_rag_scored += 1
             print(f"    no-RAG {PASS if hit else FAIL}: {' '.join(plain.split())[:100]}")
         print()
 
@@ -181,7 +216,10 @@ def main() -> int:
         # with it. Note the two refusal questions show "no-RAG FAIL" here --
         # the bare model happily answers "Canberra", and failing that check is
         # the correct outcome.
-        print(f"Without RAG: {no_rag_hits}/{len(questions)}  <- what retrieval bought you")
+        #
+        # Denominator excludes metadata cases, which are never run without RAG;
+        # counting them would understate the baseline rather than measure it.
+        print(f"Without RAG: {no_rag_hits}/{no_rag_scored}  <- what retrieval bought you")
 
     # Exit code 2 on any failure, so this can gate CI later. Note the scores
     # wobble slightly between runs even at temperature 0, so treat a single
